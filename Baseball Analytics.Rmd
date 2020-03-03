@@ -1,0 +1,194 @@
+---
+title: "Baseball Analytics"
+author: "Asvin Sritharan"
+date: "02/03/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Preliminary Analyis
+
+We plot data individually to get a feel for the data we are working with
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+baseball <- read.csv("baseball.csv")
+```
+
+```{r}
+ggplot(baseball, aes(x=OBP)) + geom_histogram()
+```
+
+```{r}
+ggplot(baseball, aes(x="", y=OBP)) + geom_boxplot()
+```
+```{r}
+ggplot(baseball, aes(x=SLG)) + geom_histogram()
+```
+
+```{r}
+ggplot(baseball, aes(x="", y=SLG)) + geom_boxplot()
+```
+
+```{r}
+ggplot(baseball, aes(x=BA)) + geom_histogram(bins = 17)
+```
+
+```{r}
+ggplot(baseball, aes(x="", y=BA)) + geom_boxplot()
+```
+```{r}
+mean(baseball$OBP)
+median(baseball$OBP)
+mean(baseball$SLG)
+median(baseball$SLG)
+mean(baseball$BA)
+median(baseball$BA)
+```
+
+
+All of the medians are very close to the means of each statistic. All boxplots have outliers which indicate the data may not hold to the normality assumption. The boxplot for BA shows that there are significant outliers to the left, which indicates that BA is right skewed.
+
+Marginal Regression Analysis
+
+
+```{r}
+# create a model for predicting runs scored by creating model on batting average
+model <- lm(RS ~ BA, data = baseball)
+# get coefficients
+coefficients(model)
+# get r^2
+summary(model)$r.squared
+# plot qq plot of batting averate data
+qqnorm(baseball$BA)
+qqline(baseball$BA, lwd=2)
+plot(RS~BA, baseball)
+lines(baseball$BA, predict(model))
+```
+
+
+The QQPlot shows that the data is not skewed as it follows the line very closely and it has a very light tail
+
+
+```{r}
+# create linear regression model for predicting runs scored using on-base percentage
+model <- lm(RS ~ OBP, data = baseball)
+# coefficients of the model
+coefficients(model)
+# get the r squared value
+summary(model)$r.squared
+#plot qqnorm and qq line onto data
+qqnorm(baseball$OBP)
+qqline(baseball$OBP, lwd=2)
+plot(RS~OBP, baseball)
+lines(baseball$OBP, predict(model))
+```
+
+
+
+The QQPlot shows that the data is not skewed as it follows the line very closely and it has a very light tail
+
+
+
+```{r}
+# fit linear regression model to predict runs scored using slugging percentage 
+model <- lm(RS ~ SLG, data = baseball)
+# get coefficients
+coefficients(model)
+# get r squared value
+summary(model)$r.squared
+# plot qq norm plot and qq line plot on data
+qqnorm(baseball$SLG)
+qqline(baseball$SLG, lwd=2)
+plot(RS~SLG, baseball)
+lines(baseball$SLG, predict(model))
+```
+The QQPlot shows that the data is not skewed as it follows the line very closely but has a light tail
+
+
+```{r}
+# fit multiple linear regression model on Batting average, slugging percentage and on base percentage
+model <- lm(RS ~ BA + SLG + OBP, data = baseball)
+# get coefficients, r squared and plot qq norm and qq line
+coefficients(model)
+summary(model)$r.squared
+qqnorm(resid(model))
+qqline(resid(model))
+```
+
+The fitting result is consistent with that in part 2 only for SLG and OBP. The coefficient for BA is negative in the multi regression model while it is a very large positive number for the marginal model. The coefficient for SLG is olmost double the value in the marginal compared to the multiple regression model. The OBP coefficient is also almost double in value in the marginal compared to the multiple regression model. The R^2 of the model is very high at 0.92 indicating a very good fit. The QQplot also almost perfectly fits the line so there is no skewing in the data and resembles the QQplot of OBP and SLG, so it seems these two are better at prediction than BA.
+
+```{r}
+# fit multiple linear regression model on Batting average and slugging percentage
+model <- lm(RS ~ BA + SLG, data = baseball)
+coefficients(model)
+# get coefficients, r squared and plot qq norm and qq line
+summary(model)$r.squared
+qqnorm(resid(model))
+qqline(resid(model))
+```
+
+```{r}
+# fit multiple linear regression model on Batting average and slugging percentage
+model <- lm(RS ~ OBP + SLG, data = baseball)
+coefficients(model)
+# get coefficients, r squared and plot qq norm and qq line
+summary(model)$r.squared
+qqnorm(resid(model))
+qqline(resid(model))
+```
+
+
+
+Omitting OBP from the model resulted in the R^2 value to drop from ~0.92 t ~0.87. the QQ plot also shows there are light tails which are more prominant than that of the model which included OBP. The coefficients of BA and SLG are closer to their marginal coefficient values. Due to the higher R2 value and the fact that OBP and SLG are very important in calculating RS, I would choose the model which includes OBP as a covariate.
+
+
+Of these results, we can conclude that team managers should focus on their team's OBP and SLG over BA to improve the runs scored as the model with OBP and SLG has the highest r squared value, indicating a better fit than the other models.
+
+Lets see if we can predict the result for Oakland Athletics' Wins for 2002.
+
+
+```{r}
+# subtract runs allowed from runs scored
+baseball$RD <- baseball$RS - baseball$RA
+# get data from prior to 2002
+baseball2002 <- baseball[baseball$Year < 2002, ]
+# Fit a linear model to predict wins based on RD
+wfit <- lm(W~RD, data = baseball2002)
+# fit a linear model to predict runs scored based on on base percentage
+rsfit <- lm(RS~OBP + SLG, data = baseball2002)
+# fit a linear model to predict runs allowed based on opponent on base percentage and opponent slugging percentage
+rafit <- lm(RA ~ OOBP + OSLG, data = baseball2002)
+# 2002 estimate for OBP, SLG, OOBP and OSLG for Oakland Athletics 
+OBP <- c(.349)
+SLG <- c(.430)
+OOBP <- c(.307)
+OSLG <- c(.373)
+# create data frame using these statistics and predict runs allowed using data frame
+tofit <- data.frame(OBP, SLG, OOBP, OSLG)
+rapred <- predict(rafit, tofit)
+#predict runs scored using data frame
+rspred <- predict(rsfit, tofit)
+tofit$RA <- c(rapred)
+tofit$RS <- c(rspred)
+# prediction for RD based on RS and RA
+tofit$RD <- c(rspred - rapred)
+# predict wins, RA and RS
+wpred <- predict(wfit, tofit)
+wpred
+rapred
+rspred
+# get actual results for wins, RA and RS
+baseball[baseball$Team=="OAK" & baseball$Year==2002,]
+
+```
+
+The prediction matches Oakland Athletics' result for 2002 for wins, RA and RS were close.
